@@ -8,6 +8,12 @@ namespace EncryptConsoleApp
     {
         static void Main(string[] args)
         {
+            //EncryptTest();
+            Mapping();
+        }
+
+        public static void EncryptTest()
+        {
             var timer = new Stopwatch();
             timer.Start();
 
@@ -26,6 +32,18 @@ namespace EncryptConsoleApp
             timer.Stop();
             Console.WriteLine($"ElapsedTime : {elapsedTime} ms");
             Console.ReadLine();
+        }
+
+        public static void Mapping()
+        {
+            var folderPath = new DirectoryInfo(@"C:\Users\axels\Downloads\Nouveau dossier (3)");
+            var mappedTree = new Folder();
+
+            mappedTree.WalkDirectoryTree(folderPath);
+            mappedTree.WriteTree();
+
+            Console.ReadLine();
+            // TODO JSON.NewtonSoft !
         }
     }
 }
