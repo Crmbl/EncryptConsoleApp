@@ -2,7 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace EncryptConsoleApp
+namespace SilentCartographer
 {
     public class EncryptionUtil
     {

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using Newtonsoft.Json;
+using SilentCartographer.Objects;
 
-namespace EncryptConsoleApp
+namespace SilentCartographer
 {
     class Program
     {
@@ -12,7 +14,7 @@ namespace EncryptConsoleApp
             Mapping();
         }
 
-        public static void EncryptTest()
+        private static void EncryptTest()
         {
             var timer = new Stopwatch();
             timer.Start();
@@ -34,16 +36,28 @@ namespace EncryptConsoleApp
             Console.ReadLine();
         }
 
-        public static void Mapping()
+        private static void Mapping()
         {
-            var folderPath = new DirectoryInfo(@"C:\Users\axels\Downloads\Nouveau dossier (3)");
+            var folderPath = new DirectoryInfo(@"C:\Users\SCHAEFAX\Documents\Perso\SilentCartographer");
             var mappedTree = new Folder();
 
             mappedTree.WalkDirectoryTree(folderPath);
-            mappedTree.WriteTree();
+
+            var json = JsonConvert.SerializeObject(mappedTree, Formatting.Indented);
+            var jsonFile = $"{Environment.CurrentDirectory}\\mapping";
+            File.WriteAllText(jsonFile, json);
+
+            using (StreamReader reader = new StreamReader(jsonFile))
+            {
+                var line = "";
+                while (line != null)
+                {
+                    line = reader.ReadLine();
+                    Console.WriteLine(line);
+                }
+            }
 
             Console.ReadLine();
-            // TODO JSON.NewtonSoft !
         }
     }
 }
