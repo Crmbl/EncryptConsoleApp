@@ -8,25 +8,28 @@ namespace SilentCartographer
 {
     class Program
     {
-        public static Folder Folder { get; set; }
+        public static Folder MappedFolder { get; set; }
 
-        public static string Password { get; }
+        public static string Password { get; set; }
 
-        public static string Salt { get; }
+        public static string Salt { get; set; }
 
-        //args[0] = @"C:\Users\SCHAEFAX\Documents\Perso\SilentCartographer";
         static void Main(string[] args)
         {
-            // TODO get password and salt from file and check them.
-            //Password = 
-            //Salt = 
+            if (!File.Exists($"{Environment.CurrentDirectory}\\poivre"))
+                Console.WriteLine("> Error. Can't find password file. ABORT!");
+            if (!File.Exists($"{Environment.CurrentDirectory}\\sel"))
+                Console.WriteLine("> Error. Can't find salt file. ABORT!");
+
+            Password = File.ReadAllText($"{Environment.CurrentDirectory}\\poivre");
+            Salt = File.ReadAllText($"{Environment.CurrentDirectory}\\sel");
 
             if (!args.Any() || args.Length != 2)
             {
                 if (!args.Any())
-                    Console.WriteLine("► Error. No args provided, needed 2.");
+                    Console.WriteLine("> Error. No args provided, needed 2.");
                 if (args.Length != 2)
-                    Console.WriteLine($"► Error. No correct amount of args provided : {args.Length}, needed 2");
+                    Console.WriteLine($"> Error. No correct amount of args provided : {args.Length}, needed 2");
 
                 Console.ReadLine();
                 Environment.Exit(-1);
@@ -40,68 +43,102 @@ namespace SilentCartographer
             if (!originExists || !destExists)
             {
                 if (!originExists)
-                    Console.WriteLine($"► Error. The origin directory does not exists : {originPath}.");
+                    Console.WriteLine($"> Error. The origin directory does not exists : {originPath}.");
                 if (!destExists)
-                    Console.WriteLine($"► Error. The destination directory does not exists : {destPath}.");
+                    Console.WriteLine($"> Error. The destination directory does not exists : {destPath}.");
 
                 Console.ReadLine();
                 Environment.Exit(-1);
             }
 
-            Console.WriteLine("► Everything is fine :");
-            Console.WriteLine($"→ Origin directory path : {originPath}");
-            Console.WriteLine($"→ Destination directory path : {destPath}");
-            Console.WriteLine("◄ Continue ?");
+            Console.WriteLine("> Everything is fine :");
+            Console.WriteLine($"- Origin directory path : {originPath}");
+            Console.WriteLine($"- Destination directory path : {destPath}");
+            Console.WriteLine("< Continue ?");
             Console.ReadLine();
 
-            Console.WriteLine("► Starting mapping generation");
-            Console.WriteLine("→ Processing ...");
+            Console.WriteLine("> Starting mapping generation");
+            Console.WriteLine("- Processing ...");
             var nbFilesToTreat = GenerateMapping(new DirectoryInfo(originPath), new DirectoryInfo(destPath));
-            Console.WriteLine("→ Mapping generation done");
-            Console.WriteLine($"→ Output path : {destPath}\\mapping");
-            Console.WriteLine("◄ Continue ?");
+            Console.WriteLine("- Mapping generation done");
+            Console.WriteLine($"- Output path : {destPath}\\mapping");
+            Console.WriteLine("< Continue ?");
             Console.ReadLine();
 
-            Console.WriteLine("► Begin files encryption from originPath");
-            var nbFilesTreated = EncryptFiles(new DirectoryInfo(destPath));
-            Console.WriteLine($"→ {nbFilesTreated} files have been treated on {nbFilesToTreat}");
+            Console.WriteLine("> Begin files encryption from originPath");
+            EncryptFiles(new DirectoryInfo(originPath), new DirectoryInfo(destPath));
+            //EncryptFiles(MappedFolder, new DirectoryInfo(destPath));
+            var nbFilesTreated = new DirectoryInfo(destPath).GetFiles().Length - 1;
+            Console.WriteLine($"- {nbFilesTreated} files have been treated on {nbFilesToTreat}");
             if (nbFilesTreated == nbFilesToTreat)
             {
-                Console.WriteLine("◄ All files have been treated. Application shutting down");
+                Console.WriteLine("< All files have been treated. Application shutting down");
                 Console.ReadLine();
                 Environment.Exit(0);
             }
             else
             {
-                Console.WriteLine("◄ Not all files have been treated ... Enjoy debugging :D");
+                Console.WriteLine("< Not all files have been treated ... Enjoy debugging :D");
+                Console.ReadLine();
+                Environment.Exit(0);
             }
         }
 
-        private static int EncryptFiles(DirectoryInfo destDir)
+        /// <summary>
+        /// Encrypt all files in directory and sub dir till the end !
+        /// </summary>
+        /// <param name="dir">Origin directory.</param>
+        /// <param name="destDir">Destination directory.</param>
+        /// <returns>Returns the number of files processed.</returns>
+        private static void EncryptFiles(DirectoryInfo dir, DirectoryInfo destDir)
         {
-            // TODO recursivity
-            foreach (var file in Folder.FileNames)
+            foreach (var file in dir.GetFiles())
             {
-                var fileBytes = File.ReadAllBytes(file);
+                var fileBytes = File.ReadAllBytes(file.FullName);
                 var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, Password, Salt);
-                var name = file.Split('/').Last();
+                
                 //TODO maybe encrypt name too ?
-                File.WriteAllBytes($"{destDir}\\{name}", resultEncrypt);
+                var newPath = $"{destDir}\\{file.Name}";
+                var ext = file.Extension;
+
+                var i = 0;
+                while (File.Exists(newPath))
+                    newPath = newPath.Replace($"{(i == 0 ? string.Empty : i.ToString())}{ext}", $"{++i}{ext}");
+
+                File.WriteAllBytes(newPath, resultEncrypt);
             }
 
-            //var sample = @"C:\Users\axels\Downloads\sample.gif";
-            //var encrypted = @"C:\Users\axels\Downloads\ecrypted.gif";
-            //var decrypted = @"C:\Users\axels\Downloads\decrypted.gif";
-            //var fileBytes = File.ReadAllBytes(sample);
-
-            //var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, "password", "salt");
-            //File.WriteAllBytes(encrypted, resultEncrypt);
+            foreach (var subDir in dir.GetDirectories())
+                EncryptFiles(subDir, destDir);
 
             //var resultDecrypt = EncryptionUtil.DecryptBytes(resultEncrypt, "password", "salt");
             //File.WriteAllBytes(decrypted, resultDecrypt);
-
-            return destDir.GetFiles().Length - 1;
         }
+
+        //private static void EncryptFiles(Folder folder, DirectoryInfo destDir)
+        //{
+        //    if (folder.FileNames != null)
+        //    foreach (var file in folder.FileNames)
+        //    {
+        //        var fileBytes = File.ReadAllBytes(file);
+        //        var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, Password, Salt);
+
+        //        //TODO maybe encrypt name too ?
+        //        var fInfo = new FileInfo(file);
+        //        var newPath = $"{destDir}\\{fInfo.Name}";
+        //        var ext = fInfo.Extension;
+
+        //        var i = 0;
+        //        while (File.Exists(newPath))
+        //            newPath = newPath.Replace($"{(i == 0 ? string.Empty : i.ToString())}{ext}", $"{++i}{ext}");
+
+        //        File.WriteAllBytes(newPath, resultEncrypt);
+        //    }
+
+        //    if (folder.Folders != null)
+        //    foreach (var subDir in folder.Folders)
+        //        EncryptFiles(subDir, destDir);
+        //}
 
         /// <summary>
         /// Generate mapping of directories to json file.
@@ -118,8 +155,8 @@ namespace SilentCartographer
             var jsonFile = $"{destDir.FullName}\\mapping";
             File.WriteAllText(jsonFile, json);
 
-            Folder = mappedTree;
-            return Count(Folder);
+            MappedFolder = mappedTree;
+            return Count(mappedTree);
         }
 
         /// <summary>
@@ -127,13 +164,10 @@ namespace SilentCartographer
         /// </summary>
         private static int Count(Folder folder)
         {
-            var amount = folder.FileNames.Count;
-            foreach (var subFolder in folder.Folders)
-            {
-                amount += subFolder.FileNames?.Count ?? 0;
-                if (subFolder.Folders.Any())
+            var amount = folder.FileNames?.Count ?? 0;
+            if (folder.Folders != null)
+                foreach (var subFolder in folder.Folders)
                     amount += Count(subFolder);
-            }
 
             return amount;
         }
