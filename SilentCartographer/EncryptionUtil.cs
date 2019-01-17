@@ -52,5 +52,31 @@ namespace SilentCartographer
 
             return plainBytes;
         }
+
+        /// <summary>
+        /// Encipher a string.
+        /// </summary>
+        public static string Encipher(string input, int key)
+        {
+            var output = string.Empty;
+            foreach (var ch in input)
+            {
+                if (!char.IsLetter(ch))
+                    output += ch;
+
+                var d = char.IsUpper(ch) ? 'A' : 'a';
+                output += (char)((ch + key - d) % 26 + d);
+            }
+
+            return output;
+        }
+
+        /// <summary>
+        /// Decipher !
+        /// </summary>
+        public static string Decipher(string input, int key)
+        {
+            return Encipher(input, 26 - key);
+        }
     }
 }

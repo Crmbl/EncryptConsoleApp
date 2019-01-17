@@ -59,26 +59,35 @@ namespace SilentCartographer
 
             Console.WriteLine("> Starting mapping generation");
             Console.WriteLine("- Processing ...");
-            var nbFilesToTreat = GenerateMapping(new DirectoryInfo(originPath), new DirectoryInfo(destPath));
+            MappedFolder = new Folder();
+            MappedFolder.WalkDirectoryTree(new DirectoryInfo(originPath));
+            var nbFilesToTreat = Count(MappedFolder);
             Console.WriteLine("- Mapping generation done");
-            Console.WriteLine($"- Output path : {destPath}\\mapping");
             Console.WriteLine("< Continue ?");
             Console.ReadLine();
 
             Console.WriteLine("> Begin files encryption from originPath");
             EncryptFiles(new DirectoryInfo(originPath), new DirectoryInfo(destPath));
-            //EncryptFiles(MappedFolder, new DirectoryInfo(destPath));
             var nbFilesTreated = new DirectoryInfo(destPath).GetFiles().Length - 1;
             Console.WriteLine($"- {nbFilesTreated} files have been treated on {nbFilesToTreat}");
             if (nbFilesTreated == nbFilesToTreat)
             {
+                Console.WriteLine("> Begin mapping encryption");
+                GenerateEncryptedJson(new DirectoryInfo(destPath));
+                Console.WriteLine("- Mapping encryption done");
+                Console.WriteLine($"- Output path : {destPath}\\mapping");
+                Console.WriteLine("< Continue ?");
+                Console.ReadLine();
+
                 Console.WriteLine("< All files have been treated. Application shutting down");
                 Console.ReadLine();
                 Environment.Exit(0);
             }
             else
             {
-                Console.WriteLine("< Not all files have been treated ... Enjoy debugging :D");
+                Console.WriteLine("< Not all files have been treated ...");
+                Console.WriteLine("- Abort mapping encryption. Application shutting down.");
+
                 Console.ReadLine();
                 Environment.Exit(0);
             }
@@ -98,14 +107,18 @@ namespace SilentCartographer
                 var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, Password, Salt);
                 
                 //TODO maybe encrypt name too ?
-                var newPath = $"{destDir}\\{file.Name}";
+                //var newPath = $"{destDir}\\{file.Name}";
                 var ext = file.Extension;
+                var fileName = file.Name;
 
                 var i = 0;
-                while (File.Exists(newPath))
-                    newPath = newPath.Replace($"{(i == 0 ? string.Empty : i.ToString())}{ext}", $"{++i}{ext}");
+                while (File.Exists($"{destDir}\\{fileName}"))
+                    fileName = fileName.Replace($"{(i == 0 ? string.Empty : i.ToString())}{ext}", $"{++i}{ext}");
 
-                File.WriteAllBytes(newPath, resultEncrypt);
+
+
+
+                File.WriteAllBytes($"{destDir}\\{fileName}", resultEncrypt);
             }
 
             foreach (var subDir in dir.GetDirectories())
@@ -114,31 +127,6 @@ namespace SilentCartographer
             //var resultDecrypt = EncryptionUtil.DecryptBytes(resultEncrypt, "password", "salt");
             //File.WriteAllBytes(decrypted, resultDecrypt);
         }
-
-        //private static void EncryptFiles(Folder folder, DirectoryInfo destDir)
-        //{
-        //    if (folder.FileNames != null)
-        //    foreach (var file in folder.FileNames)
-        //    {
-        //        var fileBytes = File.ReadAllBytes(file);
-        //        var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, Password, Salt);
-
-        //        //TODO maybe encrypt name too ?
-        //        var fInfo = new FileInfo(file);
-        //        var newPath = $"{destDir}\\{fInfo.Name}";
-        //        var ext = fInfo.Extension;
-
-        //        var i = 0;
-        //        while (File.Exists(newPath))
-        //            newPath = newPath.Replace($"{(i == 0 ? string.Empty : i.ToString())}{ext}", $"{++i}{ext}");
-
-        //        File.WriteAllBytes(newPath, resultEncrypt);
-        //    }
-
-        //    if (folder.Folders != null)
-        //    foreach (var subDir in folder.Folders)
-        //        EncryptFiles(subDir, destDir);
-        //}
 
         /// <summary>
         /// Generate mapping of directories to json file.
@@ -157,6 +145,17 @@ namespace SilentCartographer
 
             MappedFolder = mappedTree;
             return Count(mappedTree);
+        }
+
+        private static void GenerateEncryptedJson(DirectoryInfo destDir)
+        {
+            var json = JsonConvert.SerializeObject(MappedFolder, Formatting.Indented);
+            var jsonFile = $"{destDir.FullName}\\mapping";
+            File.WriteAllText(jsonFile, json);
+
+            var fileBytes = File.ReadAllBytes(jsonFile);
+            var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, Password, Salt);
+            File.WriteAllBytes(jsonFile, resultEncrypt);
         }
 
         /// <summary>
