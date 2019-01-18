@@ -8,9 +8,9 @@ namespace SilentCartographer
 {
     public static class MappingUtil
     {
-        public static Folder WalkDirectoryTree(this Folder folder, DirectoryInfo root)
+        public static FolderObject WalkDirectoryTree(this FolderObject folderObject, DirectoryInfo root)
         {
-            folder.Name = root.Name;
+            folderObject.Name = root.Name;
             FileInfo[] files = null;
             try
             {
@@ -27,20 +27,20 @@ namespace SilentCartographer
 
             if (files != null && files.Any())
             {
-                folder.FileNames = new List<string>();
+                folderObject.Files = new List<FileObject>();
                 foreach (var fi in files)
-                    folder.FileNames.Add(fi.Name);
+                    folderObject.Files.Add(new FileObject(fi.Name));
             }
 
             var subDirs = root.GetDirectories();
             if (subDirs.Any())
             {
-                folder.Folders = new List<Folder>();
+                folderObject.Folders = new List<FolderObject>();
                 foreach (var dirInfo in subDirs)
-                    folder.Folders.Add(WalkDirectoryTree(new Folder(), dirInfo));
+                    folderObject.Folders.Add(WalkDirectoryTree(new FolderObject(), dirInfo));
             }
 
-            return folder;
+            return folderObject;
         }
     }
 }

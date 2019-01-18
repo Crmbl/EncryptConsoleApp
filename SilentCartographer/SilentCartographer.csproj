@@ -47,7 +47,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MappingUtil.cs" />
-    <Compile Include="Objects\Folder.cs" />
+    <Compile Include="Objects\FileObject.cs" />
+    <Compile Include="Objects\FolderObject.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="EncryptionUtil.cs" />
