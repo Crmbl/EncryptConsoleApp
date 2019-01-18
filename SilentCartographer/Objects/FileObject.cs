@@ -5,9 +5,7 @@
         public string OriginName { get; set; }
         public string UpdatedName { get; set; }
 
-        public FileObject()
-        {
-        }
+        public FileObject() {}
 
         public FileObject(string originName)
         {

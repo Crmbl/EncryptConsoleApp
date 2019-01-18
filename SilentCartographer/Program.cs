@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
@@ -8,7 +10,9 @@ namespace SilentCartographer
 {
     class Program
     {
-        public static FolderObject MappedFolderObject { get; set; }
+        public static FolderObject MappedTree { get; set; }
+
+        public static FolderObject FlattenedTree { get; set; }
 
         public static string Password { get; set; }
 
@@ -16,6 +20,9 @@ namespace SilentCartographer
 
         static void Main(string[] args)
         {
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+
             #region Checking state
 
             if (!File.Exists($"{Environment.CurrentDirectory}\\poivre"))
@@ -53,7 +60,8 @@ namespace SilentCartographer
                 Environment.Exit(-1);
             }
 
-            Console.WriteLine("> Everything is fine :");
+            Console.WriteLine("- [OK]");
+            Console.WriteLine("> Checkup prerequisites done");
             Console.WriteLine($"- Origin directory path : {originPath}");
             Console.WriteLine($"- Destination directory path : {destPath}");
             Console.WriteLine("< Continue ?");
@@ -61,68 +69,90 @@ namespace SilentCartographer
 
             #endregion //Checking state
 
-            ////////////////////// DECRYPT
-            //var bytes = File.ReadAllBytes($"{destPath}\\mapping");
-            //var resultDecrypt = EncryptionUtil.DecryptBytes(bytes, Password, Salt);
-            //File.WriteAllBytes($"{destPath}\\mappingTest", resultDecrypt);
-            //return;
-            ////////////////////// DECRYPT
+            #region //////////////// DECRYPT
 
+            //TODO FIX not working
+            var mappingEnciphered = EncryptionUtil.Encipher("mapping", 3);
+            Console.WriteLine("- [OK]");
+            Console.WriteLine($"> Begin decryption of files in {destPath}");
+            var bytes = File.ReadAllBytes($"{destPath}\\{mappingEnciphered}");
+            var resultDecrypt = EncryptionUtil.DecryptBytes(bytes, Password, Salt);
+            File.WriteAllText($"{destPath}\\Decrypted\\mapping", resultDecrypt);
+            var dir = new DirectoryInfo(destPath);
+            foreach (var file in dir.GetFiles())
+            {
+                if (file.Name == mappingEnciphered) continue;
+                var teubs = File.ReadAllBytes($"{destPath}\\{file.Name}");
+                var decryptedFile = EncryptionUtil.DecryptBytes(teubs, Password, Salt);
+                File.WriteAllText($"{destPath}\\Decrypted\\{EncryptionUtil.Decipher(file.Name, 3)}", decryptedFile);
+            }
+            Console.WriteLine("< Decryption done. Shutting down");
+            stopWatch.Stop();
+            Console.WriteLine($"\nExecuted in {stopWatch.ElapsedMilliseconds} ms");
+            Console.ReadLine();
+            Environment.Exit(0);
+
+            #endregion ///////////// DECRYPT
+            #region //////////////// ENCRYPT
+
+            //TODO FIX not working
             Console.WriteLine("> Starting mapping generation");
-            Console.WriteLine("- Processing ...");
-            MappedFolderObject = new FolderObject();
-            MappedFolderObject.WalkDirectoryTree(new DirectoryInfo(originPath));
-            var nbFilesToTreat = Count(MappedFolderObject);
-            Console.WriteLine("- Mapping generation done");
+            MappedTree = new FolderObject();
+            MappedTree.WalkDirectoryTree(new DirectoryInfo(originPath));
+            var nbFilesToTreat = CountFiles(MappedTree);
+            Console.WriteLine("- [OK] Mapping generation done");
             Console.WriteLine("< Continue ?");
             Console.ReadLine();
 
             Console.WriteLine("> Begin files encryption from originPath");
+            FlattenedTree = new FolderObject(MappedTree.Name, new List<FileObject>(MappedTree.Files), new List<FolderObject>(MappedTree.Folders));
+            for (var i = 0; i < FlattenedTree.Folders.Count; i++)
+                FlattenedTree.Folders.AddRange(FlattenedTree.Folders[i].Folders);
             EncryptFiles(new DirectoryInfo(originPath), new DirectoryInfo(destPath));
             var nbFilesTreated = new DirectoryInfo(destPath).GetFiles().Length;
             Console.WriteLine($"- {nbFilesTreated} files have been treated on {nbFilesToTreat}");
-            //if (nbFilesTreated == nbFilesToTreat)
-            //{
-            //    Console.WriteLine("> Begin mapping encryption");
+            if (nbFilesTreated == nbFilesToTreat)
+            {
+                Console.WriteLine("- [OK]");
+                Console.WriteLine("> Begin mapping encryption");
                 GenerateEncryptedJson(new DirectoryInfo(destPath));
-            //    Console.WriteLine("- Mapping encryption done");
-            //    Console.WriteLine($"- Output path : {destPath}\\mapping");
-            //    Console.WriteLine("< Continue ?");
-            //    Console.ReadLine();
+                Console.WriteLine("- Mapping encryption done");
+                Console.WriteLine($"- Output path : {destPath}\\mapping");
+                Console.WriteLine("< All files have been treated. Shutting down");
+            }
+            else
+            {
+                Console.WriteLine("- [KO]");
+                Console.WriteLine("- Not all files have been treated ...");
+                Console.WriteLine("< Abort mapping encryption. Shutting down");
+            }
 
-            //    Console.WriteLine("< All files have been treated. Application shutting down");
-            //    Console.ReadLine();
-            //    Environment.Exit(0);
-            //}
-            //else
-            //{
-            //    Console.WriteLine("< Not all files have been treated ...");
-            //    Console.WriteLine("- Abort mapping encryption. Application shutting down.");
+            stopWatch.Stop();
+            Console.WriteLine($"\nExecuted in {stopWatch.ElapsedMilliseconds} ms");
+            Console.ReadLine();
+            Environment.Exit(0);
 
-            //    Console.ReadLine();
-            //    Environment.Exit(0);
-            //}
+            #endregion ///////////// ENCRYPT
         }
 
         private static void EncryptFiles(DirectoryInfo dir, DirectoryInfo destDir)
         {
             foreach (var file in dir.GetFiles())
             {
-                var fileBytes = File.ReadAllBytes(file.FullName);
-                var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, Password, Salt);
+                var fileText = File.ReadAllText(file.FullName);
+                var resultEncrypt = EncryptionUtil.EncryptBytes(fileText, Password, Salt);
                 var ext = file.Extension;
                 var fileName = file.Name;
 
                 var i = 0;
-                while (File.Exists($"{destDir}\\{EncryptionUtil.Encipher(fileName, 10)}"))
+                while (File.Exists($"{destDir}\\{EncryptionUtil.Encipher(fileName, 3)}"))
                     fileName = fileName.Replace($"{(i == 0 ? string.Empty : i.ToString())}{ext}", $"{++i}{ext}");
 
-                var tmpFolder = GetFolderObject(MappedFolderObject, dir.Name, file.Name);
-                var tmpFile = tmpFolder?.Files.FirstOrDefault(x => x.OriginName == file.Name);
+                var tmpFile = GetFile(file.Name, dir.Name);
                 if (tmpFile == null) continue;
 
                 tmpFile.UpdatedName = fileName;
-                var encipheredName = EncryptionUtil.Encipher(fileName, 10);
+                var encipheredName = EncryptionUtil.Encipher(fileName, 3);
                 File.WriteAllBytes($"{destDir}\\{encipheredName}", resultEncrypt);
             }
 
@@ -130,38 +160,34 @@ namespace SilentCartographer
                 EncryptFiles(subDir, destDir);
         }
 
-        private static void GenerateEncryptedJson(DirectoryInfo destDir)
+        private static FileObject GetFile(string fName, string dName)
         {
-            var json = JsonConvert.SerializeObject(MappedFolderObject, Formatting.Indented);
-            var jsonFile = $"{destDir.FullName}\\mapping";
-            File.WriteAllText(jsonFile, json);
-
-            //var fileBytes = File.ReadAllBytes(jsonFile);
-            //var resultEncrypt = EncryptionUtil.EncryptBytes(fileBytes, Password, Salt);
-            //File.WriteAllBytes(jsonFile, resultEncrypt);
-        }
-
-        private static int Count(FolderObject folderObject)
-        {
-            var amount = folderObject.Files?.Count ?? 0;
-            if (folderObject.Folders != null)
-                foreach (var subFolder in folderObject.Folders)
-                    amount += Count(subFolder);
-
-            return amount;
-        }
-
-        private static FolderObject GetFolderObject(FolderObject folder, string folderName, string fileName)
-        {
-            //TODO it won't go through every folder, stops at first Folders == null.
-            if (folder.Name == folderName && folder.Files != null && folder.Files.Any(f => f.OriginName == fileName))
-                return folder;
-
-            if (folder.Folders != null)
-                foreach (var subFolder in folder.Folders)
-                    return GetFolderObject(subFolder, folderName, fileName);
+            foreach (var sub in FlattenedTree.Folders)
+                foreach (var file in sub.Files)
+                    if (file.OriginName == fName && file.UpdatedName == null && sub.Name == dName)
+                        return file;
 
             return null;
+        }
+
+        private static void GenerateEncryptedJson(DirectoryInfo destDir)
+        {
+            var json = JsonConvert.SerializeObject(MappedTree, Formatting.Indented);
+            var jsonFile = $"{destDir.FullName}\\{EncryptionUtil.Encipher("mapping", 3)}";
+            File.WriteAllText(jsonFile, json);
+
+            var fileText = File.ReadAllText(jsonFile);
+            var resultEncrypt = EncryptionUtil.EncryptBytes(fileText, Password, Salt);
+            File.WriteAllBytes(jsonFile, resultEncrypt);
+        }
+
+        private static int CountFiles(FolderObject folderObject)
+        {
+            var amount = folderObject.Files?.Count ?? 0;
+            foreach (var subFolder in folderObject.Folders)
+                amount += CountFiles(subFolder);
+
+            return amount;
         }
     }
 }

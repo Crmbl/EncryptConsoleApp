@@ -6,10 +6,7 @@ namespace SilentCartographer
 {
     public class EncryptionUtil
     {
-        /// <summary>
-        /// Encrypt the byte array.
-        /// </summary>
-        public static byte[] EncryptBytes(byte[] inputBytes, string passPhrase, string saltValue)
+        public static byte[] EncryptBytes(string plainText, string passPhrase, string saltValue)
         {
             var cipher = new RijndaelManaged {Mode = CipherMode.CBC};
             var salt = Encoding.ASCII.GetBytes(saltValue);
@@ -21,8 +18,10 @@ namespace SilentCartographer
             {
                 using (var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write))
                 {
-                    cryptoStream.Write(inputBytes, 0, inputBytes.Length);
-                    cryptoStream.FlushFinalBlock();
+                    using (var streamWriter = new StreamWriter(cryptoStream))
+                    {
+                        streamWriter.Write(plainText);
+                    }
                     cipherBytes = memoryStream.ToArray();
                 }
             }
@@ -30,32 +29,28 @@ namespace SilentCartographer
             return cipherBytes;
         }
 
-        /// <summary>
-        /// Decrypt the byte array.
-        /// </summary>
-        public static byte[] DecryptBytes(byte[] encryptedBytes, string passPhrase, string saltValue)
+        public static string DecryptBytes(byte[] encryptedBytes, string passPhrase, string saltValue)
         {
             var cipher = new RijndaelManaged {Mode = CipherMode.CBC};
             var salt = Encoding.ASCII.GetBytes(saltValue);
             var password = new PasswordDeriveBytes(passPhrase, salt, "SHA1", 2);
 
             var decryptor = cipher.CreateDecryptor(password.GetBytes(32), password.GetBytes(16));
-            byte[] plainBytes;
+            string plainBytes;
             using (var memoryStream = new MemoryStream(encryptedBytes))
             {
                 using (var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
                 {
-                    plainBytes = new byte[encryptedBytes.Length];
-                    int decryptedCount = cryptoStream.Read(plainBytes, 0, plainBytes.Length);
+                    using (var streamReader = new StreamReader(cryptoStream))
+                    {
+                        plainBytes = streamReader.ReadToEnd();
+                    }
                 }
             }
 
             return plainBytes;
         }
 
-        /// <summary>
-        /// Encipher a string.
-        /// </summary>
         public static string Encipher(string input, int key)
         {
             var output = string.Empty;
@@ -68,6 +63,9 @@ namespace SilentCartographer
                 output += (char)((ch + key - d) % 26 + d);
             }
 
+            if (output.Contains("\\"))
+                output = output.Replace("\\", "--");
+
             return output;
         }
 
@@ -76,6 +74,9 @@ namespace SilentCartographer
         /// </summary>
         public static string Decipher(string input, int key)
         {
+            if (input.Contains("--"))
+                input = input.Replace("--", "\\");
+
             return Encipher(input, 26 - key);
         }
     }
