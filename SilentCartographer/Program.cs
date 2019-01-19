@@ -10,6 +10,8 @@ namespace SilentCartographer
 {
     class Program
     {
+        #region Properties
+
         public static FolderObject MappedTree { get; set; }
 
         public static FolderObject FlattenedTree { get; set; }
@@ -18,35 +20,30 @@ namespace SilentCartographer
 
         public static string Salt { get; set; }
 
+        #endregion //Properties
+
+        private const bool DoDecrypt = false;
+
         static void Main(string[] args)
         {
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
-
             #region Checking state
 
+            var error = false;
             if (!File.Exists($"{Environment.CurrentDirectory}\\poivre"))
-                Console.WriteLine("> Error. Can't find password file. ABORT!");
+                { Console.WriteLine("> Error. Can't find password file. ABORT!"); error = true; }
             if (!File.Exists($"{Environment.CurrentDirectory}\\sel"))
-                Console.WriteLine("> Error. Can't find salt file. ABORT!");
+                { Console.WriteLine("> Error. Can't find salt file. ABORT!"); error = true; }
+            if (!File.Exists($"{Environment.CurrentDirectory}\\settings"))
+                { Console.WriteLine("> Error. Can't find settings file. ABORT!"); error = true; }
+            if (error) { Console.ReadLine(); Environment.Exit(-1); }
 
             Password = File.ReadAllText($"{Environment.CurrentDirectory}\\poivre");
             Salt = File.ReadAllText($"{Environment.CurrentDirectory}\\sel");
+            var settings = File.ReadAllText($"{Environment.CurrentDirectory}\\settings").Split(';');
 
-            if (!args.Any() || args.Length != 2)
-            {
-                if (!args.Any())
-                    Console.WriteLine("> Error. No args provided, needed 2.");
-                if (args.Length != 2)
-                    Console.WriteLine($"> Error. No correct amount of args provided : {args.Length}, needed 2");
-
-                Console.ReadLine();
-                Environment.Exit(-1);
-            }
-
-            var originPath = args.First();
+            var originPath = settings.First();
             var originExists = Directory.Exists(originPath);
-            var destPath = args.Last();
+            var destPath = settings.Last();
             var destExists = Directory.Exists(destPath);
 
             if (!originExists || !destExists)
@@ -64,38 +61,32 @@ namespace SilentCartographer
             Console.WriteLine("> Checkup prerequisites done");
             Console.WriteLine($"- Origin directory path : {originPath}");
             Console.WriteLine($"- Destination directory path : {destPath}");
+            Console.WriteLine($"- [Encrypt mode active?] : {!DoDecrypt}");
             Console.WriteLine("< Continue ?");
             Console.ReadLine();
+
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
 
             #endregion //Checking state
 
             #region //////////////// DECRYPT
 
-            //TODO FIX not working
-            var mappingEnciphered = EncryptionUtil.Encipher("mapping", 3);
-            Console.WriteLine("- [OK]");
-            Console.WriteLine($"> Begin decryption of files in {destPath}");
-            var bytes = File.ReadAllBytes($"{destPath}\\{mappingEnciphered}");
-            var resultDecrypt = EncryptionUtil.DecryptBytes(bytes, Password, Salt);
-            File.WriteAllText($"{destPath}\\Decrypted\\mapping", resultDecrypt);
-            var dir = new DirectoryInfo(destPath);
-            foreach (var file in dir.GetFiles())
+            if (DoDecrypt)
             {
-                if (file.Name == mappingEnciphered) continue;
-                var teubs = File.ReadAllBytes($"{destPath}\\{file.Name}");
-                var decryptedFile = EncryptionUtil.DecryptBytes(teubs, Password, Salt);
-                File.WriteAllText($"{destPath}\\Decrypted\\{EncryptionUtil.Decipher(file.Name, 3)}", decryptedFile);
+                Console.WriteLine("- [OK]");
+                Console.WriteLine($"> Begin decryption of files in {destPath}");
+                DecryptFiles(new DirectoryInfo(destPath));
+                Console.WriteLine("< Decryption done. Shutting down");
+                stopWatch.Stop();
+                Console.WriteLine($"\nExecuted in {stopWatch.ElapsedMilliseconds} ms");
+                Console.ReadLine();
+                Environment.Exit(0);
             }
-            Console.WriteLine("< Decryption done. Shutting down");
-            stopWatch.Stop();
-            Console.WriteLine($"\nExecuted in {stopWatch.ElapsedMilliseconds} ms");
-            Console.ReadLine();
-            Environment.Exit(0);
 
             #endregion ///////////// DECRYPT
             #region //////////////// ENCRYPT
 
-            //TODO FIX not working
             Console.WriteLine("> Starting mapping generation");
             MappedTree = new FolderObject();
             MappedTree.WalkDirectoryTree(new DirectoryInfo(originPath));
@@ -135,29 +126,41 @@ namespace SilentCartographer
             #endregion ///////////// ENCRYPT
         }
 
+        #region Methods
+
         private static void EncryptFiles(DirectoryInfo dir, DirectoryInfo destDir)
         {
             foreach (var file in dir.GetFiles())
             {
-                var fileText = File.ReadAllText(file.FullName);
-                var resultEncrypt = EncryptionUtil.EncryptBytes(fileText, Password, Salt);
+                var bytes = File.ReadAllBytes(file.FullName);
+                var resultEncrypt = EncryptionUtil.EncryptBytes(bytes, Password, Salt);
                 var ext = file.Extension;
                 var fileName = file.Name;
 
                 var i = 0;
-                while (File.Exists($"{destDir}\\{EncryptionUtil.Encipher(fileName, 3)}"))
+                while (File.Exists($"{destDir}\\{EncryptionUtil.Encipher(fileName, 10)}"))
                     fileName = fileName.Replace($"{(i == 0 ? string.Empty : i.ToString())}{ext}", $"{++i}{ext}");
 
                 var tmpFile = GetFile(file.Name, dir.Name);
                 if (tmpFile == null) continue;
 
                 tmpFile.UpdatedName = fileName;
-                var encipheredName = EncryptionUtil.Encipher(fileName, 3);
+                var encipheredName = EncryptionUtil.Encipher(fileName, 10);
                 File.WriteAllBytes($"{destDir}\\{encipheredName}", resultEncrypt);
             }
 
             foreach (var subDir in dir.GetDirectories())
                 EncryptFiles(subDir, destDir);
+        }
+
+        private static void DecryptFiles(DirectoryInfo dir)
+        {
+            foreach (var file in dir.GetFiles())
+            {
+                var bytes = File.ReadAllBytes($"{dir.FullName}\\{file.Name}");
+                var decryptedFile = EncryptionUtil.DecryptBytes(bytes, Password, Salt);
+                File.WriteAllBytes($"{dir.FullName}\\Decrypted\\{EncryptionUtil.Decipher(file.Name, 10)}", decryptedFile);
+            }
         }
 
         private static FileObject GetFile(string fName, string dName)
@@ -173,11 +176,11 @@ namespace SilentCartographer
         private static void GenerateEncryptedJson(DirectoryInfo destDir)
         {
             var json = JsonConvert.SerializeObject(MappedTree, Formatting.Indented);
-            var jsonFile = $"{destDir.FullName}\\{EncryptionUtil.Encipher("mapping", 3)}";
+            var jsonFile = $"{destDir.FullName}\\{EncryptionUtil.Encipher("mapping", 10)}";
             File.WriteAllText(jsonFile, json);
 
-            var fileText = File.ReadAllText(jsonFile);
-            var resultEncrypt = EncryptionUtil.EncryptBytes(fileText, Password, Salt);
+            var bytes = File.ReadAllBytes(jsonFile);
+            var resultEncrypt = EncryptionUtil.EncryptBytes(bytes, Password, Salt);
             File.WriteAllBytes(jsonFile, resultEncrypt);
         }
 
@@ -189,5 +192,7 @@ namespace SilentCartographer
 
             return amount;
         }
+
+        #endregion //Methods
     }
 }
