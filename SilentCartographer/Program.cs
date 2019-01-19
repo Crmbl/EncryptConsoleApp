@@ -159,6 +159,8 @@ namespace SilentCartographer
             {
                 var bytes = File.ReadAllBytes($"{dir.FullName}\\{file.Name}");
                 var decryptedFile = EncryptionUtil.DecryptBytes(bytes, Password, Salt);
+                if (!Directory.Exists($"{dir.FullName}\\Decrypted"))
+                    Directory.CreateDirectory($"{dir.FullName}\\Decrypted");
                 File.WriteAllBytes($"{dir.FullName}\\Decrypted\\{EncryptionUtil.Decipher(file.Name, 10)}", decryptedFile);
             }
         }
