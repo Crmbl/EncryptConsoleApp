@@ -108,7 +108,7 @@ namespace SilentCartographer
                 Console.WriteLine("> Begin mapping encryption");
                 GenerateEncryptedJson(new DirectoryInfo(destPath));
                 Console.WriteLine("- Mapping encryption done");
-                Console.WriteLine($"- Output path : {destPath}\\mapping");
+                Console.WriteLine($"- Output path : {destPath}\\mapping.json");
                 Console.WriteLine("< All files have been treated. Shutting down");
             }
             else
@@ -178,7 +178,7 @@ namespace SilentCartographer
         private static void GenerateEncryptedJson(DirectoryInfo destDir)
         {
             var json = JsonConvert.SerializeObject(MappedTree, Formatting.Indented);
-            var jsonFile = $"{destDir.FullName}\\{EncryptionUtil.Encipher("mapping", 10)}";
+            var jsonFile = $"{destDir.FullName}\\{EncryptionUtil.Encipher("mapping.json", 10)}";
             File.WriteAllText(jsonFile, json);
 
             var bytes = File.ReadAllBytes(jsonFile);
