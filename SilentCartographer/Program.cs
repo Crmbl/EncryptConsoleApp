@@ -167,6 +167,13 @@ namespace SilentCartographer
 
         private static FileObject GetFile(string fName, string dName)
         {
+            if (FlattenedTree.Files.Any())
+            {
+                foreach(var file in FlattenedTree.Files)
+                if (file.OriginName == fName && file.UpdatedName == null && FlattenedTree.Name == dName)
+                    return file;
+            }
+
             foreach (var sub in FlattenedTree.Folders)
                 foreach (var file in sub.Files)
                     if (file.OriginName == fName && file.UpdatedName == null && sub.Name == dName)
