@@ -23,7 +23,7 @@ namespace SilentCartographer
 
         #endregion //Properties
 
-        private const bool DoDecrypt = true;
+        private const bool DoDecrypt = false;
 
         static void Main(string[] args)
         {
@@ -70,11 +70,6 @@ namespace SilentCartographer
             stopWatch.Start();
 
             #endregion //Checking state
-
-            //var t = new UTF8Encoding(false).GetBytes("Hello World");
-            //var result = EncryptionUtil.EncryptBytes(t, Password, Salt);
-            //var decrypt = EncryptionUtil.DecryptBytes(result, Password, Salt);
-            //var tt = new UTF8Encoding(false).GetString(decrypt);
 
             #region //////////////// DECRYPT
 
