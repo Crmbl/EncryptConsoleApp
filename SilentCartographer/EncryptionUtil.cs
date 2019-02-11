@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -14,6 +15,7 @@ namespace SilentCartographer
 
             var encryptor = cipher.CreateEncryptor(password.GetBytes(32), password.GetBytes(16));
             var memoryStream = new MemoryStream();
+            memoryStream.Write(BitConverter.GetBytes(inputBytes.Length), 0, 4);
             var cryptoStream = new CryptoStream(memoryStream, encryptor, CryptoStreamMode.Write);
             cryptoStream.Write(inputBytes, 0, inputBytes.Length);
             cryptoStream.FlushFinalBlock();
@@ -33,8 +35,10 @@ namespace SilentCartographer
 
             var decryptor = cipher.CreateDecryptor(password.GetBytes(32), password.GetBytes(16));
             var memoryStream = new MemoryStream(encryptedBytes);
+            var tmpByte = new Byte[4];
+            var memoryRead = memoryStream.Read(tmpByte, 0, 4);
             var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read);
-            var plainBytes = new byte[encryptedBytes.Length];
+            var plainBytes = new byte[BitConverter.ToInt32(tmpByte, 0)];
             var DecryptedCount = cryptoStream.Read(plainBytes, 0, plainBytes.Length);
 
             memoryStream.Close();

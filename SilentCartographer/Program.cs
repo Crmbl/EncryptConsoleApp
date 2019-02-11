@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Newtonsoft.Json;
 using SilentCartographer.Objects;
 
@@ -22,7 +23,7 @@ namespace SilentCartographer
 
         #endregion //Properties
 
-        private const bool DoDecrypt = false;
+        private const bool DoDecrypt = true;
 
         static void Main(string[] args)
         {
@@ -69,6 +70,11 @@ namespace SilentCartographer
             stopWatch.Start();
 
             #endregion //Checking state
+
+            //var t = new UTF8Encoding(false).GetBytes("Hello World");
+            //var result = EncryptionUtil.EncryptBytes(t, Password, Salt);
+            //var decrypt = EncryptionUtil.DecryptBytes(result, Password, Salt);
+            //var tt = new UTF8Encoding(false).GetString(decrypt);
 
             #region //////////////// DECRYPT
 
@@ -188,7 +194,8 @@ namespace SilentCartographer
             var jsonFile = $"{destDir.FullName}\\{EncryptionUtil.Encipher("mapping.json", 10)}";
             File.WriteAllText(jsonFile, json);
 
-            var bytes = File.ReadAllBytes(jsonFile);
+            //var bytes = File.ReadAllBytes(jsonFile);
+            var bytes = Encoding.UTF8.GetBytes(File.ReadAllText(jsonFile));
             var resultEncrypt = EncryptionUtil.EncryptBytes(bytes, Password, Salt);
             File.WriteAllBytes(jsonFile, resultEncrypt);
         }
