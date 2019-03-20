@@ -42,6 +42,8 @@ namespace SilentCartographer
                         var inputFile = new MediaFile { Filename = fi.FullName };
                         using (var engine = new Engine()) { engine.GetMetadata(inputFile); }
 
+                        if (inputFile.Metadata == null) continue;
+                        if (inputFile.Metadata.VideoData == null) continue;
                         var size = inputFile.Metadata.VideoData.FrameSize.Split('x');
                         file = new FileObject(fi.Name, size.First(), size.Last());
                     }
