@@ -97,7 +97,7 @@ namespace SilentCartographer
             Console.ReadLine();
 
             Console.WriteLine("> Begin files encryption from originPath");
-            FlattenedTree = new FolderObject(MappedTree.Name, new List<FileObject>(MappedTree.Files), new List<FolderObject>(MappedTree.Folders));
+            FlattenedTree = new FolderObject(MappedTree.Name, MappedTree.FullPath, new List<FileObject>(MappedTree.Files), new List<FolderObject>(MappedTree.Folders));
             for (var i = 0; i < FlattenedTree.Folders.Count; i++)
                 FlattenedTree.Folders.AddRange(FlattenedTree.Folders[i].Folders);
             EncryptFiles(new DirectoryInfo(originPath), new DirectoryInfo(destPath));

@@ -13,6 +13,7 @@ namespace SilentCartographer
         public static FolderObject WalkDirectoryTree(this FolderObject folderObject, DirectoryInfo root)
         {
             folderObject.Name = root.Name;
+            folderObject.FullPath = root.FullName;
             FileInfo[] files = null;
             try
             {
